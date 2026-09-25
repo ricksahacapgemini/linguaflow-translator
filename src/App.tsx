@@ -301,49 +301,73 @@ function App() {
     }
 
     let settled = false
-    const recognition = new Recognition()
-    recognition.lang = navigator.language.toLowerCase().startsWith('es') ? 'es-ES' : 'en-US'
-    recognition.continuous = false
-    recognition.interimResults = false
-    recognition.onresult = (event) => {
-      if (settled) return
-      const rawTranscript = event.results[0]?.[0]?.transcript.trim() ?? ''
-      const correctedTranscript = spanishSpeechCorrections[normalizeText(rawTranscript).replace(/ /g, '')] ?? rawTranscript
-      if (!correctedTranscript) return
-      settled = true
-      recognition.abort()
-      recognitionRef.current = []
+    let hasRetried = false
+    let recognition: SpeechRecognitionInstance | null = null
+    const firstLanguage = navigator.language.toLowerCase().startsWith('es') ? 'es-ES' : 'en-US'
+    const scheduleTimeout = (language: string) => {
       if (recognitionTimerRef.current) window.clearTimeout(recognitionTimerRef.current)
-      setIsListening(false)
-      setSource((current) => `${current}${current && !current.endsWith(' ') ? ' ' : ''}${correctedTranscript}`)
+      recognitionTimerRef.current = window.setTimeout(() => {
+        if (settled) return
+        recognition?.abort()
+        if (!hasRetried) {
+          hasRetried = true
+          startRecognition(language === 'en-US' ? 'es-ES' : 'en-US')
+        } else {
+          setIsListening(false)
+          setVoiceError('Voice input could not hear speech. Allow Edge microphone access and try again.')
+        }
+      }, 5000)
     }
-    recognition.onend = () => {
-      if (!settled) setIsListening(false)
-      recognitionRef.current = []
-    }
-    recognition.onerror = (event) => {
-      settled = true
-      setIsListening(false)
-      recognitionRef.current = []
-      const messages: Record<string, string> = {
-        'not-allowed': 'Microphone permission was denied. Allow microphone access for this site, then try again.',
-        'audio-capture': 'No microphone was found. Connect a microphone, then try again.',
-        'no-speech': 'No speech was detected. Please try again.',
+    const startRecognition = (language: string) => {
+      recognition = new Recognition()
+      recognition.lang = language
+      recognition.continuous = false
+      recognition.interimResults = false
+      recognition.onresult = (event) => {
+        if (settled) return
+        const rawTranscript = event.results[0]?.[0]?.transcript.trim() ?? ''
+        const correctedTranscript = spanishSpeechCorrections[normalizeText(rawTranscript).replace(/ /g, '')] ?? rawTranscript
+        if (!correctedTranscript) return
+        settled = true
+        recognition?.abort()
+        recognitionRef.current = []
+        if (recognitionTimerRef.current) window.clearTimeout(recognitionTimerRef.current)
+        setIsListening(false)
+        setSource((current) => `${current}${current && !current.endsWith(' ') ? ' ' : ''}${correctedTranscript}`)
       }
-      if (messages[event.error]) setVoiceError(messages[event.error])
+      recognition.onend = () => {
+        recognitionRef.current = []
+        if (!settled && !hasRetried) {
+          hasRetried = true
+          startRecognition(language === 'en-US' ? 'es-ES' : 'en-US')
+        } else if (!settled) {
+          setIsListening(false)
+          setVoiceError('No speech was detected. Check Edge microphone permission and try again.')
+        }
+      }
+      recognition.onerror = (event) => {
+        if ((event.error === 'no-speech' || event.error === 'network') && !hasRetried) {
+          hasRetried = true
+          startRecognition(language === 'en-US' ? 'es-ES' : 'en-US')
+          return
+        }
+        settled = true
+        setIsListening(false)
+        recognitionRef.current = []
+        const messages: Record<string, string> = {
+          'not-allowed': 'Microphone permission was denied. Allow microphone access for this site, then try again.',
+          'audio-capture': 'No microphone was found. Connect a microphone, then try again.',
+          'no-speech': 'No speech was detected. Check Edge microphone permission and try again.',
+        }
+        if (messages[event.error]) setVoiceError(messages[event.error])
+      }
+      recognitionRef.current = [recognition]
+      recognition.start()
+      scheduleTimeout(language)
     }
-    recognitionRef.current = [recognition]
     setVoiceError('')
     setIsListening(true)
-    recognition.start()
-    recognitionTimerRef.current = window.setTimeout(() => {
-      if (!settled) {
-        recognition.abort()
-        recognitionRef.current = []
-        setIsListening(false)
-        setVoiceError('Voice input timed out. Click the microphone and try again.')
-      }
-    }, 8000)
+    startRecognition(firstLanguage)
   }
 
   useEffect(() => () => {
