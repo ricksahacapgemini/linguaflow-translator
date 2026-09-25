@@ -182,6 +182,7 @@ function App() {
   const [translated, setTranslated] = useState('')
   const [copied, setCopied] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
+  const [speechError, setSpeechError] = useState('')
   const [isListening, setIsListening] = useState(false)
   const [voiceError, setVoiceError] = useState('')
   const [visitorStats, setVisitorStats] = useState({ count: 0, shared: false })
@@ -231,7 +232,11 @@ function App() {
   }
 
   const speakTranslation = () => {
-    if (!translated || !('speechSynthesis' in window)) return
+    if (!translated) return
+    if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+      setSpeechError('Audio playback is not supported in this browser.')
+      return
+    }
     if (isSpeaking || window.speechSynthesis.speaking || window.speechSynthesis.pending) {
       window.speechSynthesis.cancel()
       setIsSpeaking(false)
@@ -240,10 +245,19 @@ function App() {
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(translated)
     utterance.lang = targetLanguage === 'spanish' ? 'es-ES' : 'en-US'
-    utterance.onstart = () => setIsSpeaking(true)
+    const voices = window.speechSynthesis.getVoices()
+    const languagePrefix = targetLanguage === 'spanish' ? 'es' : 'en'
+    utterance.voice = voices.find((voice) => voice.lang.toLowerCase().startsWith(languagePrefix)) ?? null
+    utterance.onstart = () => {
+      setSpeechError('')
+      setIsSpeaking(true)
+    }
     utterance.onend = () => setIsSpeaking(false)
-    utterance.onerror = () => setIsSpeaking(false)
-    setIsSpeaking(true)
+    utterance.onerror = (event) => {
+      setIsSpeaking(false)
+      if (event.error !== 'canceled' && event.error !== 'interrupted') setSpeechError('Audio playback was blocked. Check your browser sound settings and try again.')
+    }
+    setSpeechError('')
     window.speechSynthesis.speak(utterance)
   }
 
@@ -351,6 +365,7 @@ function App() {
           <div className="text-panel result-panel">
             <div className="result-heading"><label htmlFor="result-text">Your translation</label><span className="live-label"><span className="pulse-dot" /> Live</span></div>
             <div id="result-text" className={`result-text ${translationReady ? 'has-result' : ''}`} aria-live="polite">{translated || 'Your translation will appear here...'}</div>
+            {speechError && <div className="voice-error" role="status">{speechError}</div>}
             <div className="panel-footer result-actions"><span className="quality-label">{translationReady ? 'Ready in real time' : 'Waiting for your words'}</span><div className="action-buttons"><button onClick={speakTranslation} disabled={!translated} aria-label={isSpeaking ? 'Stop speaking' : 'Listen to translation'} title={isSpeaking ? 'Stop speaking' : 'Listen'}><span>{isSpeaking ? '■' : '◖'}</span></button><button onClick={copyTranslation} disabled={!translated} aria-label="Copy translation" title="Copy">{copied ? '✓' : '▣'}</button></div></div>
           </div>
         </div>
