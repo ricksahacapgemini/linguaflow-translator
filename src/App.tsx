@@ -190,6 +190,7 @@ function App() {
   const recognitionRef = useRef<SpeechRecognitionInstance[]>([])
   const recognitionTimerRef = useRef<number | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const lastSpokenTranslationRef = useRef('')
   const sourceLanguage = useMemo(() => detectLanguage(source), [source])
   const targetLanguage: Language = sourceLanguage === 'english' ? 'spanish' : 'english'
 
@@ -244,6 +245,15 @@ function App() {
       audioRef.current?.pause()
       if (audioRef.current) audioRef.current.currentTime = 0
       setIsSpeaking(false)
+      setSource('')
+      setTranslated('')
+      lastSpokenTranslationRef.current = ''
+      return
+    }
+    if (lastSpokenTranslationRef.current === translated) {
+      setSource('')
+      setTranslated('')
+      lastSpokenTranslationRef.current = ''
       return
     }
     window.speechSynthesis.cancel()
@@ -284,11 +294,13 @@ function App() {
     utterance.onerror = (event) => {
       setIsSpeaking(false)
       if (event.error !== 'canceled' && event.error !== 'interrupted') {
+        lastSpokenTranslationRef.current = ''
         setSpeechError(voices.length === 0
           ? 'Edge has no speech voices available. Enable a voice in Windows Settings > Time & language > Speech.'
           : 'Edge could not play speech. Check the tab sound and Windows audio output, then try again.')
       }
     }
+    lastSpokenTranslationRef.current = translated
     window.speechSynthesis.resume()
     window.speechSynthesis.speak(utterance)
   }
@@ -437,7 +449,7 @@ function App() {
             <div className="result-heading"><label htmlFor="result-text">Your translation</label><span className="live-label"><span className="pulse-dot" /> Live</span></div>
             <div id="result-text" className={`result-text ${translationReady ? 'has-result' : ''}`} aria-live="polite">{translated || 'Your translation will appear here...'}</div>
             {speechError && <div className="voice-error" role="status">{speechError}</div>}
-            <div className="panel-footer result-actions"><span className="quality-label">{translationReady ? 'Ready in real time' : 'Waiting for your words'}</span><div className="action-buttons"><button onClick={speakTranslation} disabled={!translated} aria-label={isSpeaking ? 'Stop speaking' : 'Listen to translation'} title={isSpeaking ? 'Stop speaking' : 'Listen'}><span>{isSpeaking ? '■' : '◖'}</span></button><button onClick={copyTranslation} disabled={!translated} aria-label="Copy translation" title="Copy">{copied ? '✓' : '▣'}</button></div></div>
+            <div className="panel-footer result-actions"><span className="quality-label">{translationReady ? 'Ready in real time' : 'Waiting for your words'}</span><div className="action-buttons"><button onClick={speakTranslation} disabled={!translated} aria-label={isSpeaking ? 'Stop speaking and clear text' : lastSpokenTranslationRef.current === translated ? 'Clear previous input' : 'Listen to translation'} title={isSpeaking ? 'Stop and clear' : lastSpokenTranslationRef.current === translated ? 'Clear previous input' : 'Listen'}><span>{isSpeaking ? '■' : lastSpokenTranslationRef.current === translated ? '×' : '◖'}</span></button><button onClick={copyTranslation} disabled={!translated} aria-label="Copy translation" title="Copy">{copied ? '✓' : '▣'}</button></div></div>
           </div>
         </div>
 
