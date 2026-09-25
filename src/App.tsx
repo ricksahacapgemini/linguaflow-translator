@@ -12,6 +12,7 @@ type SpeechRecognitionInstance = {
   onerror: ((event: { error: string }) => void) | null
   start: () => void
   stop: () => void
+  abort: () => void
 }
 type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance
 
@@ -252,7 +253,9 @@ function App() {
     }
 
     if (isListening) {
-      recognitionRef.current.forEach((recognition) => recognition.stop())
+      recognitionRef.current.forEach((recognition) => recognition.abort())
+      recognitionRef.current = []
+      setIsListening(false)
       return
     }
 
@@ -269,7 +272,9 @@ function App() {
         const correctedTranscript = spanishSpeechCorrections[normalizeText(rawTranscript).replace(/ /g, '')] ?? rawTranscript
         if (!correctedTranscript) return
         settled = true
-        recognitions.forEach((activeRecognition) => activeRecognition.stop())
+        recognitions.forEach((activeRecognition) => activeRecognition.abort())
+        recognitionRef.current = []
+        setIsListening(false)
         setSource((current) => `${current}${current && !current.endsWith(' ') ? ' ' : ''}${correctedTranscript}`)
       }
       recognition.onend = () => {
@@ -293,7 +298,7 @@ function App() {
     recognitions.forEach((recognition) => recognition.start())
   }
 
-  useEffect(() => () => recognitionRef.current.forEach((recognition) => recognition.stop()), [])
+  useEffect(() => () => recognitionRef.current.forEach((recognition) => recognition.abort()), [])
 
   const swapText = () => {
     if (!translated) return
