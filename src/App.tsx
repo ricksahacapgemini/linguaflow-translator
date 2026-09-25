@@ -232,7 +232,7 @@ function App() {
 
   const speakTranslation = () => {
     if (!translated || !('speechSynthesis' in window)) return
-    if (isSpeaking) {
+    if (isSpeaking || window.speechSynthesis.speaking || window.speechSynthesis.pending) {
       window.speechSynthesis.cancel()
       setIsSpeaking(false)
       return
@@ -243,6 +243,7 @@ function App() {
     utterance.onstart = () => setIsSpeaking(true)
     utterance.onend = () => setIsSpeaking(false)
     utterance.onerror = () => setIsSpeaking(false)
+    setIsSpeaking(true)
     window.speechSynthesis.speak(utterance)
   }
 
