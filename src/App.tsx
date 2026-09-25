@@ -58,6 +58,7 @@ const reversePhrases: Record<string, string> = Object.fromEntries(
 )
 reversePhrases[normalizeText('Hola, cómo estás')] = 'hello, how are you?'
 reversePhrases[normalizeText('Muy bien')] = 'very well'
+reversePhrases['muay bian'] = 'very well'
 
 const spanishWords: Record<string, string> = {
   yo: 'I', tú: 'you', él: 'he', ella: 'she', nosotros: 'we', ellos: 'they',
@@ -109,7 +110,7 @@ const spanishIndicatorWords = new Set([
   'adios', 'agua', 'amigo', 'amiga', 'aqui', 'bien', 'buenas', 'buenos', 'cafe', 'casa',
   'comida', 'como', 'donde', 'estas', 'familia', 'gracias', 'hablar', 'hola', 'hoy',
   'mañana', 'manana', 'nombre', 'necesito', 'noches', 'quiero', 'tardes', 'trabajo',
-  'escuela', 'favor', 'por', 'puedo', 'comprar', 'días', 'dias', 'qué', 'que',
+  'escuela', 'favor', 'por', 'puedo', 'comprar', 'días', 'dias', 'qué', 'que', 'muy', 'bien', 'muay', 'bian',
 ])
 
 function normalizeText(value: string) {
