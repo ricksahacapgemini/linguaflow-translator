@@ -160,6 +160,14 @@ function translateText(value: string, sourceLanguage: Language) {
   })
 }
 
+async function translateOnline(value: string, sourceLanguage: Language, signal: AbortSignal) {
+  const languagePair = sourceLanguage === 'english' ? 'en|es' : 'es|en'
+  const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(value)}&langpair=${languagePair}`, { signal })
+  if (!response.ok) throw new Error('Online translation unavailable')
+  const data = await response.json() as { responseData?: { translatedText?: string } }
+  return data.responseData?.translatedText?.trim() ?? ''
+}
+
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
@@ -182,8 +190,22 @@ function App() {
   const targetLanguage: Language = sourceLanguage === 'english' ? 'spanish' : 'english'
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setTranslated(translateText(source, sourceLanguage)), 120)
-    return () => window.clearTimeout(timer)
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => {
+      const localTranslation = translateText(source, sourceLanguage)
+      setTranslated(localTranslation)
+
+      if (source.trim().length < 4) return
+      translateOnline(source, sourceLanguage, controller.signal)
+        .then((onlineTranslation) => {
+          if (onlineTranslation) setTranslated(onlineTranslation)
+        })
+        .catch(() => undefined)
+    }, 180)
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
   }, [source, sourceLanguage])
 
   useEffect(() => {
