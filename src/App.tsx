@@ -232,11 +232,17 @@ function App() {
 
   const speakTranslation = () => {
     if (!translated || !('speechSynthesis' in window)) return
+    if (isSpeaking) {
+      window.speechSynthesis.cancel()
+      setIsSpeaking(false)
+      return
+    }
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(translated)
     utterance.lang = targetLanguage === 'spanish' ? 'es-ES' : 'en-US'
     utterance.onstart = () => setIsSpeaking(true)
     utterance.onend = () => setIsSpeaking(false)
+    utterance.onerror = () => setIsSpeaking(false)
     window.speechSynthesis.speak(utterance)
   }
 
@@ -344,7 +350,7 @@ function App() {
           <div className="text-panel result-panel">
             <div className="result-heading"><label htmlFor="result-text">Your translation</label><span className="live-label"><span className="pulse-dot" /> Live</span></div>
             <div id="result-text" className={`result-text ${translationReady ? 'has-result' : ''}`} aria-live="polite">{translated || 'Your translation will appear here...'}</div>
-            <div className="panel-footer result-actions"><span className="quality-label">{translationReady ? 'Ready in real time' : 'Waiting for your words'}</span><div className="action-buttons"><button onClick={speakTranslation} disabled={!translated} aria-label="Listen to translation" title="Listen"><span>{isSpeaking ? '■' : '◖'}</span></button><button onClick={copyTranslation} disabled={!translated} aria-label="Copy translation" title="Copy">{copied ? '✓' : '▣'}</button></div></div>
+            <div className="panel-footer result-actions"><span className="quality-label">{translationReady ? 'Ready in real time' : 'Waiting for your words'}</span><div className="action-buttons"><button onClick={speakTranslation} disabled={!translated} aria-label={isSpeaking ? 'Stop speaking' : 'Listen to translation'} title={isSpeaking ? 'Stop speaking' : 'Listen'}><span>{isSpeaking ? '■' : '◖'}</span></button><button onClick={copyTranslation} disabled={!translated} aria-label="Copy translation" title="Copy">{copied ? '✓' : '▣'}</button></div></div>
           </div>
         </div>
 
