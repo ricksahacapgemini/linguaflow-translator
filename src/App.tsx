@@ -59,6 +59,7 @@ const reversePhrases: Record<string, string> = Object.fromEntries(
 reversePhrases[normalizeText('Hola, cómo estás')] = 'hello, how are you?'
 reversePhrases[normalizeText('Muy bien')] = 'very well'
 reversePhrases['muay bian'] = 'very well'
+reversePhrases[normalizeText('Se me antoja una cerveza')] = 'I feel like a beer'
 
 const spanishWords: Record<string, string> = {
   yo: 'I', tú: 'you', él: 'he', ella: 'she', nosotros: 'we', ellos: 'they',
@@ -69,7 +70,7 @@ const spanishWords: Record<string, string> = {
   hoy: 'today', mañana: 'tomorrow', ayer: 'yesterday', buenos: 'good', buenas: 'good',
   días: 'morning', tardes: 'afternoons', noches: 'nights', tarde: 'afternoon', noche: 'night',
   día: 'day', amigo: 'friend', amiga: 'friend', familia: 'family', casa: 'home',
-  trabajo: 'work', escuela: 'school', comida: 'food', agua: 'water', café: 'coffee',
+  trabajo: 'work', escuela: 'school', comida: 'food', agua: 'water', café: 'coffee', cerveza: 'beer',
   tiempo: 'time', ayuda: 'help', quiero: 'want', necesito: 'need', gustar: 'like',
   amar: 'love', tener: 'have', puedo: 'can', ir: 'go', venir: 'come', hablar: 'speak',
   entender: 'understand', aprender: 'learn', vivir: 'live', hacer: 'make', saber: 'know',
