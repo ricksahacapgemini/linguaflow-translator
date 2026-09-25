@@ -173,11 +173,10 @@ function App() {
   const [copied, setCopied] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isListening, setIsListening] = useState(false)
-  const [voiceLanguage, setVoiceLanguage] = useState<Language>('english')
   const [voiceError, setVoiceError] = useState('')
   const [visitorStats, setVisitorStats] = useState({ count: 0, shared: false })
   const [exampleStart, setExampleStart] = useState(0)
-  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
+  const recognitionRef = useRef<SpeechRecognitionInstance[]>([])
   const sourceLanguage = useMemo(() => detectLanguage(source), [source])
   const targetLanguage: Language = sourceLanguage === 'english' ? 'spanish' : 'english'
 
@@ -217,7 +216,7 @@ function App() {
     window.speechSynthesis.speak(utterance)
   }
 
-  const toggleVoiceInput = (requestedLanguage: Language = voiceLanguage) => {
+  const toggleVoiceInput = () => {
     const speechWindow = window as Window & {
       SpeechRecognition?: SpeechRecognitionConstructor
       webkitSpeechRecognition?: SpeechRecognitionConstructor
@@ -230,41 +229,48 @@ function App() {
     }
 
     if (isListening) {
-      recognitionRef.current?.stop()
+      recognitionRef.current.forEach((recognition) => recognition.stop())
       return
     }
 
-    const recognition = new Recognition()
-    recognition.lang = requestedLanguage === 'spanish' ? 'es-ES' : 'en-US'
-    recognition.continuous = false
-    recognition.interimResults = false
-    recognition.onresult = (event) => {
-      const rawTranscript = event.results[0]?.[0]?.transcript.trim()
-      const transcript = requestedLanguage === 'spanish'
-        ? spanishSpeechCorrections[normalizeText(rawTranscript ?? '').replace(/ /g, '')] ?? rawTranscript
-        : rawTranscript
-      if (transcript) {
-        setSource((current) => `${current}${current && !current.endsWith(' ') ? ' ' : ''}${transcript}`)
+    let settled = false
+    let activeSessions = 2
+    const recognitions = (['en-US', 'es-ES'] as const).map((language) => {
+      const recognition = new Recognition()
+      recognition.lang = language
+      recognition.continuous = false
+      recognition.interimResults = false
+      recognition.onresult = (event) => {
+        if (settled) return
+        const rawTranscript = event.results[0]?.[0]?.transcript.trim() ?? ''
+        const correctedTranscript = spanishSpeechCorrections[normalizeText(rawTranscript).replace(/ /g, '')] ?? rawTranscript
+        if (!correctedTranscript) return
+        settled = true
+        recognitions.forEach((activeRecognition) => activeRecognition.stop())
+        setSource((current) => `${current}${current && !current.endsWith(' ') ? ' ' : ''}${correctedTranscript}`)
       }
-    }
-    recognition.onend = () => setIsListening(false)
-    recognition.onerror = (event) => {
-      setIsListening(false)
-      const messages: Record<string, string> = {
-        'not-allowed': 'Microphone permission was denied. Allow microphone access for this site, then try again.',
-        'audio-capture': 'No microphone was found. Connect a microphone, then try again.',
-        'no-speech': 'No speech was detected. Please speak clearly and try again.',
-        network: 'Voice recognition could not connect. Check your internet connection and try again.',
+      recognition.onend = () => {
+        activeSessions -= 1
+        if (activeSessions === 0 && !settled) setIsListening(false)
       }
-      setVoiceError(messages[event.error] ?? 'Voice input was unavailable. Please try again.')
-    }
-    recognitionRef.current = recognition
+      recognition.onerror = (event) => {
+        if (event.error === 'not-allowed' || event.error === 'audio-capture') {
+          settled = true
+          setIsListening(false)
+          setVoiceError(event.error === 'not-allowed'
+            ? 'Microphone permission was denied. Allow microphone access for this site, then try again.'
+            : 'No microphone was found. Connect a microphone, then try again.')
+        }
+      }
+      return recognition
+    })
+    recognitionRef.current = recognitions
     setVoiceError('')
     setIsListening(true)
-    recognition.start()
+    recognitions.forEach((recognition) => recognition.start())
   }
 
-  useEffect(() => () => recognitionRef.current?.stop(), [])
+  useEffect(() => () => recognitionRef.current.forEach((recognition) => recognition.stop()), [])
 
   const swapText = () => {
     if (!translated) return
@@ -304,7 +310,7 @@ function App() {
           <div className="text-panel source-panel">
             <label htmlFor="source-text">Your words</label>
             <textarea id="source-text" value={source} onChange={(event) => setSource(event.target.value)} placeholder="Start typing in English or Spanish..." maxLength={5000} autoFocus />
-            <div className="panel-footer"><span>{sourceCount.toLocaleString()} / 5,000</span><div className="source-actions"><button className="voice-language-button" onClick={() => setVoiceLanguage('english')} aria-pressed={voiceLanguage === 'english'} aria-label="Speak English" title="Speak English">EN</button><button className="voice-language-button" onClick={() => setVoiceLanguage('spanish')} aria-pressed={voiceLanguage === 'spanish'} aria-label="Speak Spanish" title="Speak Spanish">ES</button><button className={`voice-button ${isListening ? 'listening' : ''}`} onClick={() => toggleVoiceInput()} aria-label={isListening ? 'Stop voice input' : `Start ${voiceLanguage} voice input`} title={isListening ? 'Stop voice input' : `Speak ${voiceLanguage}`}>{isListening ? '■' : '🎙'}</button><button className="clear-button" onClick={() => setSource('')} disabled={!source}>Clear</button></div></div>
+            <div className="panel-footer"><span>{sourceCount.toLocaleString()} / 5,000</span><div className="source-actions"><button className={`voice-button ${isListening ? 'listening' : ''}`} onClick={toggleVoiceInput} aria-label={isListening ? 'Stop automatic voice input' : 'Start automatic voice input'} title={isListening ? 'Stop voice input' : 'Auto-detect English or Spanish speech'}>{isListening ? '■' : '🎙'}</button><button className="clear-button" onClick={() => setSource('')} disabled={!source}>Clear</button></div></div>
             {voiceError && <div className="voice-error" role="status">{voiceError}</div>}
           </div>
           <div className="text-panel result-panel">
