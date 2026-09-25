@@ -188,6 +188,7 @@ function App() {
   const [visitorStats, setVisitorStats] = useState({ count: 0, shared: false })
   const [exampleStart, setExampleStart] = useState(0)
   const recognitionRef = useRef<SpeechRecognitionInstance[]>([])
+  const audioRef = useRef<HTMLAudioElement | null>(null)
   const sourceLanguage = useMemo(() => detectLanguage(source), [source])
   const targetLanguage: Language = sourceLanguage === 'english' ? 'spanish' : 'english'
 
@@ -239,6 +240,8 @@ function App() {
     }
     if (isSpeaking || window.speechSynthesis.speaking || window.speechSynthesis.pending) {
       window.speechSynthesis.cancel()
+      audioRef.current?.pause()
+      if (audioRef.current) audioRef.current.currentTime = 0
       setIsSpeaking(false)
       return
     }
@@ -254,8 +257,22 @@ function App() {
     }
     utterance.onend = () => setIsSpeaking(false)
     utterance.onerror = (event) => {
-      setIsSpeaking(false)
-      if (event.error !== 'canceled' && event.error !== 'interrupted') setSpeechError('Audio playback was blocked. Check your browser sound settings and try again.')
+      if (event.error === 'canceled' || event.error === 'interrupted') {
+        setIsSpeaking(false)
+        return
+      }
+      const audio = new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${targetLanguage === 'spanish' ? 'es' : 'en'}&q=${encodeURIComponent(translated)}`)
+      audioRef.current = audio
+      audio.onplay = () => setIsSpeaking(true)
+      audio.onended = () => setIsSpeaking(false)
+      audio.onerror = () => {
+        setIsSpeaking(false)
+        setSpeechError('Edge blocked audio playback. Allow sound for this site and try again.')
+      }
+      audio.play().catch(() => {
+        setIsSpeaking(false)
+        setSpeechError('Edge blocked audio playback. Allow sound for this site and try again.')
+      })
     }
     setSpeechError('')
     window.speechSynthesis.resume()
