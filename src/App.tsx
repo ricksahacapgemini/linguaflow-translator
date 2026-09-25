@@ -188,6 +188,7 @@ function App() {
   const [visitorStats, setVisitorStats] = useState({ count: 0, shared: false })
   const [exampleStart, setExampleStart] = useState(0)
   const recognitionRef = useRef<SpeechRecognitionInstance[]>([])
+  const recognitionTimerRef = useRef<number | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const sourceLanguage = useMemo(() => detectLanguage(source), [source])
   const targetLanguage: Language = sourceLanguage === 'english' ? 'spanish' : 'english'
@@ -294,50 +295,61 @@ function App() {
     if (isListening) {
       recognitionRef.current.forEach((recognition) => recognition.abort())
       recognitionRef.current = []
+      if (recognitionTimerRef.current) window.clearTimeout(recognitionTimerRef.current)
       setIsListening(false)
       return
     }
 
     let settled = false
-    let activeSessions = 2
-    const recognitions = (['en-US', 'es-ES'] as const).map((language) => {
-      const recognition = new Recognition()
-      recognition.lang = language
-      recognition.continuous = false
-      recognition.interimResults = false
-      recognition.onresult = (event) => {
-        if (settled) return
-        const rawTranscript = event.results[0]?.[0]?.transcript.trim() ?? ''
-        const correctedTranscript = spanishSpeechCorrections[normalizeText(rawTranscript).replace(/ /g, '')] ?? rawTranscript
-        if (!correctedTranscript) return
-        settled = true
-        recognitions.forEach((activeRecognition) => activeRecognition.abort())
-        recognitionRef.current = []
-        setIsListening(false)
-        setSource((current) => `${current}${current && !current.endsWith(' ') ? ' ' : ''}${correctedTranscript}`)
+    const recognition = new Recognition()
+    recognition.lang = navigator.language.toLowerCase().startsWith('es') ? 'es-ES' : 'en-US'
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.onresult = (event) => {
+      if (settled) return
+      const rawTranscript = event.results[0]?.[0]?.transcript.trim() ?? ''
+      const correctedTranscript = spanishSpeechCorrections[normalizeText(rawTranscript).replace(/ /g, '')] ?? rawTranscript
+      if (!correctedTranscript) return
+      settled = true
+      recognition.abort()
+      recognitionRef.current = []
+      if (recognitionTimerRef.current) window.clearTimeout(recognitionTimerRef.current)
+      setIsListening(false)
+      setSource((current) => `${current}${current && !current.endsWith(' ') ? ' ' : ''}${correctedTranscript}`)
+    }
+    recognition.onend = () => {
+      if (!settled) setIsListening(false)
+      recognitionRef.current = []
+    }
+    recognition.onerror = (event) => {
+      settled = true
+      setIsListening(false)
+      recognitionRef.current = []
+      const messages: Record<string, string> = {
+        'not-allowed': 'Microphone permission was denied. Allow microphone access for this site, then try again.',
+        'audio-capture': 'No microphone was found. Connect a microphone, then try again.',
+        'no-speech': 'No speech was detected. Please try again.',
       }
-      recognition.onend = () => {
-        activeSessions -= 1
-        if (activeSessions === 0 && !settled) setIsListening(false)
-      }
-      recognition.onerror = (event) => {
-        if (event.error === 'not-allowed' || event.error === 'audio-capture') {
-          settled = true
-          setIsListening(false)
-          setVoiceError(event.error === 'not-allowed'
-            ? 'Microphone permission was denied. Allow microphone access for this site, then try again.'
-            : 'No microphone was found. Connect a microphone, then try again.')
-        }
-      }
-      return recognition
-    })
-    recognitionRef.current = recognitions
+      if (messages[event.error]) setVoiceError(messages[event.error])
+    }
+    recognitionRef.current = [recognition]
     setVoiceError('')
     setIsListening(true)
-    recognitions.forEach((recognition) => recognition.start())
+    recognition.start()
+    recognitionTimerRef.current = window.setTimeout(() => {
+      if (!settled) {
+        recognition.abort()
+        recognitionRef.current = []
+        setIsListening(false)
+        setVoiceError('Voice input timed out. Click the microphone and try again.')
+      }
+    }, 8000)
   }
 
-  useEffect(() => () => recognitionRef.current.forEach((recognition) => recognition.abort()), [])
+  useEffect(() => () => {
+    recognitionRef.current.forEach((recognition) => recognition.abort())
+    if (recognitionTimerRef.current) window.clearTimeout(recognitionTimerRef.current)
+  }, [])
 
   const swapText = () => {
     if (!translated) return
