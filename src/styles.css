@@ -38,6 +38,7 @@ textarea::placeholder { color: #aab1aa; }
 .panel-footer { display: flex; align-items: center; justify-content: space-between; color: #9aa29a; font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
 .source-actions { display: flex; align-items: center; gap: 13px; }
 .voice-language-button { height: 27px; padding: 0 7px; color: #51705e; background: transparent; border: 1px solid #c5d1c5; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: .08em; }
+.voice-language-button[aria-pressed="true"] { color: #f4f1ea; background: #193d37; border-color: #193d37; }
 .voice-language-button:hover { color: #f4f1ea; background: #193d37; border-color: #193d37; }
 .voice-button { width: 28px; height: 27px; display: grid; place-items: center; padding: 0; color: #51705e; background: transparent; border: 1px solid #c5d1c5; border-radius: 3px; font-size: 13px; }
 .voice-button:hover, .voice-button.listening { color: #f4f1ea; background: #cb6b4c; border-color: #cb6b4c; }

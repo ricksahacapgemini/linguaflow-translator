@@ -94,6 +94,17 @@ const examples = [
   'See you soon.',
   'See you later.',
 ]
+
+const spanishSpeechCorrections: Record<string, string> = {
+  muivian: 'Muy bien',
+  muybian: 'Muy bien',
+  mubien: 'Muy bien',
+  grasias: 'Gracias',
+  graciass: 'Gracias',
+  buenosdias: 'Buenos días',
+  buenastardes: 'Buenas tardes',
+  buenasnoches: 'Buenas noches',
+}
 const spanishIndicatorWords = new Set([
   'adios', 'agua', 'amigo', 'amiga', 'aqui', 'bien', 'buenas', 'buenos', 'cafe', 'casa',
   'comida', 'como', 'donde', 'estas', 'familia', 'gracias', 'hablar', 'hola', 'hoy',
@@ -204,7 +215,7 @@ function App() {
     window.speechSynthesis.speak(utterance)
   }
 
-  const toggleVoiceInput = () => {
+  const toggleVoiceInput = (requestedLanguage: Language = voiceLanguage) => {
     const speechWindow = window as Window & {
       SpeechRecognition?: SpeechRecognitionConstructor
       webkitSpeechRecognition?: SpeechRecognitionConstructor
@@ -222,11 +233,14 @@ function App() {
     }
 
     const recognition = new Recognition()
-    recognition.lang = voiceLanguage === 'spanish' ? 'es-ES' : 'en-US'
+    recognition.lang = requestedLanguage === 'spanish' ? 'es-ES' : 'en-US'
     recognition.continuous = false
     recognition.interimResults = false
     recognition.onresult = (event) => {
-      const transcript = event.results[0]?.[0]?.transcript.trim()
+      const rawTranscript = event.results[0]?.[0]?.transcript.trim()
+      const transcript = requestedLanguage === 'spanish'
+        ? spanishSpeechCorrections[normalizeText(rawTranscript ?? '').replace(/ /g, '')] ?? rawTranscript
+        : rawTranscript
       if (transcript) {
         setSource((current) => `${current}${current && !current.endsWith(' ') ? ' ' : ''}${transcript}`)
       }
@@ -288,7 +302,7 @@ function App() {
           <div className="text-panel source-panel">
             <label htmlFor="source-text">Your words</label>
             <textarea id="source-text" value={source} onChange={(event) => setSource(event.target.value)} placeholder="Start typing in English or Spanish..." maxLength={5000} autoFocus />
-            <div className="panel-footer"><span>{sourceCount.toLocaleString()} / 5,000</span><div className="source-actions"><button className="voice-language-button" onClick={() => setVoiceLanguage((current) => current === 'english' ? 'spanish' : 'english')} aria-label={`Voice language: ${voiceLanguage}. Switch language`} title="Switch voice language">{voiceLanguage === 'english' ? 'EN' : 'ES'}</button><button className={`voice-button ${isListening ? 'listening' : ''}`} onClick={toggleVoiceInput} aria-label={isListening ? 'Stop voice input' : `Start ${voiceLanguage} voice input`} title={isListening ? 'Stop voice input' : `Speak ${voiceLanguage}`}>{isListening ? '■' : '🎙'}</button><button className="clear-button" onClick={() => setSource('')} disabled={!source}>Clear</button></div></div>
+            <div className="panel-footer"><span>{sourceCount.toLocaleString()} / 5,000</span><div className="source-actions"><button className="voice-language-button" onClick={() => setVoiceLanguage('english')} aria-pressed={voiceLanguage === 'english'} aria-label="Speak English" title="Speak English">EN</button><button className="voice-language-button" onClick={() => setVoiceLanguage('spanish')} aria-pressed={voiceLanguage === 'spanish'} aria-label="Speak Spanish" title="Speak Spanish">ES</button><button className={`voice-button ${isListening ? 'listening' : ''}`} onClick={() => toggleVoiceInput()} aria-label={isListening ? 'Stop voice input' : `Start ${voiceLanguage} voice input`} title={isListening ? 'Stop voice input' : `Speak ${voiceLanguage}`}>{isListening ? '■' : '🎙'}</button><button className="clear-button" onClick={() => setSource('')} disabled={!source}>Clear</button></div></div>
             {voiceError && <div className="voice-error" role="status">{voiceError}</div>}
           </div>
           <div className="text-panel result-panel">
