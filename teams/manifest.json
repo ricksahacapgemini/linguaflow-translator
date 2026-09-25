@@ -1,0 +1,62 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "1.0.0",
+  "id": "be5f8ecd-1385-4373-b802-14a9a6611daa",
+  "developer": {
+    "name": "LinguaFlow",
+    "websiteUrl": "https://example.com",
+    "privacyUrl": "https://example.com/privacy",
+    "termsOfUseUrl": "https://example.com/terms"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "name": {
+    "short": "LinguaFlow",
+    "full": "LinguaFlow English to Spanish Translator"
+  },
+  "description": {
+    "short": "Translate English to Spanish in real time.",
+    "full": "LinguaFlow is a focused English-to-Spanish translator for quick conversations inside Microsoft Teams."
+  },
+  "accentColor": "#193D37",
+  "devicePermissions": ["media"],
+  "composeExtensions": [
+    {
+      "botId": "be5f8ecd-1385-4373-b802-14a9a6611daa",
+      "commands": [
+        {
+          "id": "translate",
+          "type": "query",
+          "title": "Translate",
+          "description": "Translate English or Spanish text before sending it.",
+          "initialRun": false,
+          "fetchTask": false,
+          "context": ["compose", "commandBox", "message"],
+          "parameters": [
+            {
+              "name": "text",
+              "title": "Text",
+              "description": "Enter English or Spanish text.",
+              "inputType": "text"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "staticTabs": [
+    {
+      "entityId": "linguaflow-translator",
+      "name": "Translator",
+      "scopes": ["personal"],
+      "websiteUrl": "https://pnnwhxdd-5174.usw3.devtunnels.ms/",
+      "contentUrl": "https://pnnwhxdd-5174.usw3.devtunnels.ms/"
+    }
+  ],
+  "validDomains": [
+    "pnnwhxdd-5174.usw3.devtunnels.ms"
+  ]
+}
