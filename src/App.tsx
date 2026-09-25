@@ -160,6 +160,7 @@ function App() {
   const [copied, setCopied] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isListening, setIsListening] = useState(false)
+  const [voiceLanguage, setVoiceLanguage] = useState<Language>('english')
   const [voiceError, setVoiceError] = useState('')
   const [visitorStats, setVisitorStats] = useState({ count: 0, shared: false })
   const [exampleStart, setExampleStart] = useState(0)
@@ -221,7 +222,7 @@ function App() {
     }
 
     const recognition = new Recognition()
-    recognition.lang = 'en-US'
+    recognition.lang = voiceLanguage === 'spanish' ? 'es-ES' : 'en-US'
     recognition.continuous = false
     recognition.interimResults = false
     recognition.onresult = (event) => {
@@ -287,7 +288,7 @@ function App() {
           <div className="text-panel source-panel">
             <label htmlFor="source-text">Your words</label>
             <textarea id="source-text" value={source} onChange={(event) => setSource(event.target.value)} placeholder="Start typing in English or Spanish..." maxLength={5000} autoFocus />
-            <div className="panel-footer"><span>{sourceCount.toLocaleString()} / 5,000</span><div className="source-actions"><button className={`voice-button ${isListening ? 'listening' : ''}`} onClick={toggleVoiceInput} aria-label={isListening ? 'Stop voice input' : 'Start voice input'} title={isListening ? 'Stop voice input' : 'Speak English'}>{isListening ? '■' : '🎙'}</button><button className="clear-button" onClick={() => setSource('')} disabled={!source}>Clear</button></div></div>
+            <div className="panel-footer"><span>{sourceCount.toLocaleString()} / 5,000</span><div className="source-actions"><button className="voice-language-button" onClick={() => setVoiceLanguage((current) => current === 'english' ? 'spanish' : 'english')} aria-label={`Voice language: ${voiceLanguage}. Switch language`} title="Switch voice language">{voiceLanguage === 'english' ? 'EN' : 'ES'}</button><button className={`voice-button ${isListening ? 'listening' : ''}`} onClick={toggleVoiceInput} aria-label={isListening ? 'Stop voice input' : `Start ${voiceLanguage} voice input`} title={isListening ? 'Stop voice input' : `Speak ${voiceLanguage}`}>{isListening ? '■' : '🎙'}</button><button className="clear-button" onClick={() => setSource('')} disabled={!source}>Clear</button></div></div>
             {voiceError && <div className="voice-error" role="status">{voiceError}</div>}
           </div>
           <div className="text-panel result-panel">
