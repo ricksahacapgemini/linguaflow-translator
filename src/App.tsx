@@ -233,7 +233,7 @@ function App() {
     window.setTimeout(() => setCopied(false), 1600)
   }
 
-  const speakTranslation = () => {
+  const speakTranslation = async () => {
     if (!translated) return
     if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
       setSpeechError('Audio playback is not supported in this browser.')
@@ -247,35 +247,48 @@ function App() {
       return
     }
     window.speechSynthesis.cancel()
+    setSpeechError('')
+    setIsSpeaking(true)
+
+    let voices = window.speechSynthesis.getVoices()
+    if (voices.length === 0) {
+      voices = await new Promise<SpeechSynthesisVoice[]>((resolve) => {
+        let finished = false
+        const finish = () => {
+          if (finished) return
+          finished = true
+          window.clearTimeout(timeout)
+          window.speechSynthesis.removeEventListener('voiceschanged', readVoices)
+          resolve(window.speechSynthesis.getVoices())
+        }
+        const readVoices = () => {
+          if (window.speechSynthesis.getVoices().length > 0) finish()
+        }
+        const timeout = window.setTimeout(finish, 1200)
+        window.speechSynthesis.addEventListener('voiceschanged', readVoices)
+        window.speechSynthesis.getVoices()
+      })
+    }
+
     const utterance = new SpeechSynthesisUtterance(translated)
     utterance.lang = targetLanguage === 'spanish' ? 'es-ES' : 'en-US'
-    const voices = window.speechSynthesis.getVoices()
     const languagePrefix = targetLanguage === 'spanish' ? 'es' : 'en'
     utterance.voice = voices.find((voice) => voice.lang.toLowerCase().startsWith(languagePrefix)) ?? null
+    utterance.rate = 0.95
+    utterance.volume = 1
     utterance.onstart = () => {
       setSpeechError('')
       setIsSpeaking(true)
     }
     utterance.onend = () => setIsSpeaking(false)
     utterance.onerror = (event) => {
-      if (event.error === 'canceled' || event.error === 'interrupted') {
-        setIsSpeaking(false)
-        return
+      setIsSpeaking(false)
+      if (event.error !== 'canceled' && event.error !== 'interrupted') {
+        setSpeechError(voices.length === 0
+          ? 'Edge has no speech voices available. Enable a voice in Windows Settings > Time & language > Speech.'
+          : 'Edge could not play speech. Check the tab sound and Windows audio output, then try again.')
       }
-      const audio = new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${targetLanguage === 'spanish' ? 'es' : 'en'}&q=${encodeURIComponent(translated)}`)
-      audioRef.current = audio
-      audio.onplay = () => setIsSpeaking(true)
-      audio.onended = () => setIsSpeaking(false)
-      audio.onerror = () => {
-        setIsSpeaking(false)
-        setSpeechError('Edge blocked audio playback. Allow sound for this site and try again.')
-      }
-      audio.play().catch(() => {
-        setIsSpeaking(false)
-        setSpeechError('Edge blocked audio playback. Allow sound for this site and try again.')
-      })
     }
-    setSpeechError('')
     window.speechSynthesis.resume()
     window.speechSynthesis.speak(utterance)
   }
