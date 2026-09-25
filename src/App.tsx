@@ -258,6 +258,7 @@ function App() {
       if (event.error !== 'canceled' && event.error !== 'interrupted') setSpeechError('Audio playback was blocked. Check your browser sound settings and try again.')
     }
     setSpeechError('')
+    window.speechSynthesis.resume()
     window.speechSynthesis.speak(utterance)
   }
 
