@@ -313,6 +313,10 @@ function App() {
       return
     }
 
+    setSource('')
+    setTranslated('')
+    setVoiceError('')
+
     let settled = false
     let hasRetried = false
     let recognition: SpeechRecognitionInstance | null = null
